@@ -1,0 +1,34 @@
+有一个主进程和若干个工作进程，主进程的主要目的是读取和计算配置，维护工作进程，工作进程处理实际的请求。使用基于事件的模型和依赖于操作系统的机制来有效地在工作进程间分发请求。工作进程的数目定义在配置文件中，可以是一个固定的值或者自动适应到可用的CPU核心数。
+
+nginx和它的模块的工作方式由配置文件决定的，默认配置文件的位置在/usr/local/nginx/conf，/etc/nginx或/usr/local/etc/nginx
+
+运行可执行文件来启动nginx，一旦启动后可以使用nginx -s 选项来操作，选项可以是stop：快速关闭，quit：优雅关闭，reload：重新加载配置文件，reopen：重新打开日志文件，执行这些命令的用户必须和启动nginx的是同一个。对配置文件的更改不会自动应用，除非重新加载配置文件或重启nginx后才生效
+
+一旦主进程收到重新加载配置文件的信号，检查配置文件语法是否正确和尝试应用这些配置，如果成功的话，主进程启动新的工作进程和发送消息给旧的工作进程要求它们关闭，否则主进程回滚更改，继续使用旧的配置。旧工作进程收到关闭命令后，不再接收新的连接和继续处理当前的请求，直到所有的请求都处理完，旧工作进程退出。
+
+组成nginx的模块是由配置文件中具体的指令来控制的，指令分为简单指令和块指令，简单指令由名称和参数值组成并以空格分开和以分号结尾。块指令有和简单指令一样的结构，但它是以大括号括起来的多个额外指令结尾。如果一个块指令的大括号里可以有其它指令，它被称为一个上下文。配置文件中位于所有上下文外面的指令被认为位于主上下文中。events和http指令位于主上下文中，server在http里，location又在server里。
+
+web服务器的一个重要任务是输出文件（如图片和静态HTML文件）。实现一个例子，根据不同的请求，输出不同的本地目录中的文件，/data/www（包含HTML文件），/data/images（包含图片）。这需要在http块中的server块中添加两个location块。
+
+一般来说，配置文件可能包含若干个server块，由不同的端口和server名称来区分。一旦nginx决定应该由哪一个server处理一个请求，就会用请求头里指定的URI和位于server块中的location指令的参数值进行比对，这个location块指定了/（正斜线）前缀，并用它和来自于请求的URI进行比较。对于成功匹配的请求，URI将被加到位于location块中的root指令的参数值后面，来构成指向本地文件系统里的一个请求文件的路径。如果有多个location块匹配的话就选择具有最长前缀的那个。上文提到的正斜线是最短前缀，只有当其它location都无法匹配时才会使用它。
+
+将匹配那些以/images/开始的请求，因此server块的配置看起来像这样，请求的URI加到root指定的路径后面，这样请求的URL并不是文件的实际位置。例如http://localhost/images/example.png实际返回/data/images/example.png，http://localhost/some/example.html将返回/data/www/some/example.html。日志文件通常位于/usr/local/nginx/logs或/var/log/nginx
+server {
+    location / {
+        root /data/www;
+    }
+
+    location /images/ {
+        root /data;
+    }
+}
+
+nginx经常被用作一个代理服务器，就是接收请求，并转发到被代理的服务器上，然后获取响应，再转发回客户端。请求图片直接给出响应，其它请求转发到代理服务器。server块中的root指令在location中没有定义自己的root指令时使用
+server {
+    listen 8080;
+    root /data/up1;
+
+    location / {
+    }
+}
+
