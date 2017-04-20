@@ -32,3 +32,159 @@ server {
     }
 }
 
+把上面的例子进行改造，产生一个代理服务器配置，第一个location中的proxy_pass指令的参数值指定了代理服务器的协议，名称和端口
+server {
+    location / {
+        proxy_pass http://localhost:8080;
+    }
+
+    location /images/ {
+        root /data;
+    }
+}
+
+修改第二个location，按照图片的扩展名进行匹配，参数值是一个正则表达式，以~字符开头。当nginx选择一个location来服务请求时，首选按前缀进行匹配并且记住匹配的最长前缀，然后按正则表达式匹配，如果能匹配则选择正则表达式，否则选择之前的那个最长前缀
+location ~ \.(gif|jpg|png)$ {
+    root /data/images;
+}
+最后看起来是这样
+server {
+    location / {
+        proxy_pass http://localhost:8080/;
+    }
+
+    location ~ \.(gif|jpg|png)$ {
+        root /data/images;
+    }
+}
+
+基于名称的虚拟服务器，nginx首先决定哪个server处理请求，nginx比对请求的header中的Host字段，来确定请求路由到的server。如果没有匹配到任何一个server名称或header中根本就不包含Host字段，将把请求路由到拥有该端口的默认server。在这里，默认的server就是第一个，这是nginx的标准默认行为
+server {
+    listen      80;
+    server_name example.org www.example.org;
+    ...
+}
+
+server {
+    listen      80;
+    server_name example.net www.example.net;
+    ...
+}
+
+server {
+    listen      80;
+    server_name example.com www.example.com;
+    ...
+}
+
+也可以显式指定默认server，在listen指令里使用default_server参数
+server {
+    listen      80 default_server;
+    server_name example.net www.example.net;
+    ...
+}
+
+如果一个请求的header中没有Host字段，server可以选择丢弃这个请求，按如下配置，server名称是空字符串，将匹配所有没有Host字段的请求，返回一个非标准的444来关闭连接。如果不配置server名称的话，默认就是空字符串，所以可以省略不配置
+server {
+    listen      80;
+    server_name "";
+    return      444;
+}
+
+混合基于名称和基于IP的虚拟服务器，这时先测试IP和端口，然后再测试Host字段包含的server名称，如果server名称没有发现，那么使用默认server来处理
+server {
+    listen      192.168.1.1:80;
+    server_name example.org www.example.org;
+    ...
+}
+
+server {
+    listen      192.168.1.1:80;
+    server_name example.net www.example.net;
+    ...
+}
+
+server {
+    listen      192.168.1.2:80;
+    server_name example.com www.example.com;
+    ...
+}
+
+默认server是listen指令的属性，所以不同的listen指令可以定义不同的默认server
+server {
+    listen      192.168.1.1:80;
+    server_name example.org www.example.org;
+    ...
+}
+
+server {
+    listen      192.168.1.1:80 default_server;
+    server_name example.net www.example.net;
+    ...
+}
+
+server {
+    listen      192.168.1.2:80 default_server;
+    server_name example.com www.example.com;
+    ...
+}
+
+server名称使用server_name指令定义，用于决定哪一个server块用来处理给定的请求，可以使用准备名称，通配符名称或正则表达式来定义。如果有多个匹配时，按照这样的优先级顺序，准备名称，以星号开头的最长通配符名称，以星号结尾的最长通配符名称，第一个匹配的正则表达式（以在配置文件中的定义顺序）
+server {
+    listen       80;
+    server_name  example.org  www.example.org;
+    ...
+}
+
+server {
+    listen       80;
+    server_name  *.example.org;
+    ...
+}
+
+server {
+    listen       80;
+    server_name  mail.*;
+    ...
+}
+
+server {
+    listen       80;
+    server_name  ~^(?<user>.+)\.example\.net$;
+    ...
+}
+
+通配符名称，只能在名称的开头或结尾包含一个星号，只能和一个点边界相邻。www.*.example.org和w*.example.org都是不合法的。一个星号可以匹配多个名称部分，*.example.org可以匹配www.example.org和www.sub.example.org。一个特别的通配符名称.example.org可以匹配准确名称example.org和通配符名称*.example.org
+
+正则表达式名称，以~波浪符号开头，否则将不被认为是正则。用法和普通正则表达式一样。一个命名正则表达式捕获，稍后可以当作变量使用，也可以使用数字形式的捕获，
+server {
+    server_name   ~^(www\.)?(?<domain>.+)$;
+
+    location / {
+        root   /sites/$domain;
+    }
+}
+server {
+    server_name   ~^(www\.)?(.+)$;
+
+    location / {
+        root   /sites/$2;
+    }
+}
+
+混杂的名称，有些server名称会被特别对待，请求header中没有Host字段的将被空字符串的server名称处理，如果server名称定义成$hostname，那么机器的hostname将被使用，如果直接用IP地址来请求，那么Host字段包含IP地址，可以把IP地址作为server名称，
+server {
+    listen       80;
+    server_name  example.org  www.example.org  "";
+    ...
+}
+server {
+    listen       80;
+    server_name  example.org
+                 www.example.org
+                 ""
+                 192.168.1.1
+                 ;
+    ...
+}
+
