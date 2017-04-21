@@ -1,0 +1,7 @@
+负载均衡和反向代理都是通过http块中的server块中的location块中的proxy_pass指令来实现的
+
+负载均衡时，proxy_pass指令的参数值是一个upstream指令定义的server组（多个server）
+
+反向代理时，proxy_pass指令的参数值是一个具体的被代理的服务器地址和端口
+
+解压多个tomcat，修改端口，进行测试
