@@ -188,3 +188,49 @@ server {
     ...
 }
 
+负载均衡可以优化资源使用率，最大化吞吐量，降低延时，确保容错性。nginx可以用作非常高效的HTTP负载均衡器，分发请求到若干应用服务器，改进性能，扩展性和可靠性。nginx支持以下负载均衡机制，round-robin：轮询，least-connected：最少连接，ip-hash：客户端IP哈希（采用哈希函数）
+
+最简单的负载均衡，默认负载均衡机制是轮询，myapp1是一个server组，请求逐个分发给组里的每个server，可以使用https协议替换http
+http {
+    upstream myapp1 {
+        server srv1.example.com;
+        server srv2.example.com;
+        server srv3.example.com;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://myapp1;
+        }
+    }
+}
+
+最少连接负载均衡，在有些请求处理时间较长时，会使每个server上的负载相对较均衡（公平），nginx不会把过多的请求分发给繁忙的服务器，而是分发给不太繁忙的。在server组中使用least_conn指令
+upstream myapp1 {
+    least_conn;
+    server srv1.example.com;
+    server srv2.example.com;
+    server srv3.example.com;
+}
+
+Session持久化，在轮询和最少连接的负载均衡机制下，每一个后续的客户端请求可能被分发到不同的server上，如果想让一个客户端的请求总是分发到同一个server上，可以使用IP哈希负载均衡机制，使用客户端IP来计算哈希值然后选择server，只要server可用，总是分发到同一server上。在server组中加入ip_hash指令
+upstream myapp1 {
+    ip_hash;
+    server srv1.example.com;
+    server srv2.example.com;
+    server srv3.example.com;
+}
+
+带权重的负载均衡，通过使用server权重可以更进一步去影响nginx的负载均衡算法，当没有定义权重时默认权重都是一样的。在请求处理较快时，轮询机制也算是一种比较均衡的算法。当一个server使用weight元素指定了权重时，权重将作为负载均衡决定因素的一部分。下面这种情况，有5个请求的话，第一个server分的3个后面每个server分的1个。在最少连接和IP哈希负载均衡机制中也可以使用权重
+upstream myapp1 {
+    server srv1.example.com weight=3;
+    server srv2.example.com;
+    server srv3.example.com;
+}
+
+健康检查，如果一个server因发生错误而响应失败，nginx标记这个server失败，在一定时间内后续进来的请求将避免选择这个server。fail_timeout指令定义server被标记为失败的时长，时长过后，nginx将优雅地对这个server进行探究测试，如果成功这个server将恢复正常。max_fails指令定义在失败期间对server连续不成功尝试的次数，默认是1，当设置为0时，对这个server的健康检查将被禁止
+
+
+
