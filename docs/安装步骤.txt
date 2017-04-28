@@ -1,0 +1,36 @@
+单安装nginx
+
+建立/usr/local/nginx-src目录
+下载nginx压缩包，解压，进入nginx目录
+执行./configure --prefix=/usr/local/nginx，这里prefix指定的是安装目录，nginx会安装到这里
+执行make
+执行make install
+/usr/local/nginx/sbin/nginx，这就是编译好的可执行文件
+启动，/usr/local/nginx/sbin/nginx
+关闭，/usr/local/nginx/sbin/nginx -s stop
+重新加载配置文件，/usr/local/nginx/sbin/nginx -s reload
+查看安装情况，/usr/local/nginx/sbin/nginx -V
+
+**********************************************************************************************
+
+在安装的同时也安装第三方模块
+
+下载nginx压缩包，解压，进入nginx目录
+执行./configure --prefix=/你的安装目录  --add-module=/第三方模块目录 --add-module=/第三方模块目录
+执行make
+执行make install
+/你的安装目录/sbin/nginx，这就是编译好的可执行文件
+
+**********************************************************************************************
+
+nginx已安装好了，单独安装第三方模块
+
+进入nginx目录
+执行./configure --prefix=/你的安装目录  --add-module=/第三方模块目录 --add-module=/第三方模块目录
+执行make
+把/objs/nginx拷贝到/你的安装目录/sbin/nginx进行覆盖，即用重新编译的覆盖原来的（注意这里不需要执行make install来再次安装）
+
+注：重新编译的时候，记得一定要把以前编译过的模块一同加到configure参数里面（使用--with-）
+执行./configure --prefix=/你的安装目录  --with-http_stub_status_module --with-http_ssl_module --add-module=/第三方模块目录 --add-module=/第三方模块目录
+
+
