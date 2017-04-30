@@ -1,3 +1,9 @@
+依赖包
+yum install gcc-c++
+yum install pcre pcre-devel
+yum install zlib zlib-devel
+yum install openssl openssl-devel
+
 单安装nginx
 
 建立/usr/local/nginx-src目录
